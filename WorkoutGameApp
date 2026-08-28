@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Joint-Safe Fitness Quest</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .custom-checkbox:checked {
+      background-color: #10b981;
+      border-color: #10b981;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen pb-16 font-sans antialiased select-none">
+
+  <main class="max-w-md mx-auto px-4 pt-6">
+
+    <header class="bg-slate-800 border border-slate-700 rounded-2xl p-5 mb-5 shadow-lg">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-emerald-400">Adventurer Rank</span>
+          <h1 class="text-2xl font-black text-white flex items-center gap-2">
+            Level <span id="level-display">1</span>
+          </h1>
+        </div>
+        <div class="text-right">
+          <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Quest Streak</span>
+          <div class="text-xl font-black text-amber-300 flex items-center justify-end gap-1">
+            🔥 <span id="streak-display">0</span> <span class="text-sm font-normal text-slate-400">days</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="w-full bg-slate-700 h-3 rounded-full overflow-hidden mb-2">
+        <div id="xp-bar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full w-0 transition-all duration-300"></div>
+      </div>
+      <div class="flex justify-between text-xs text-slate-400">
+        <span>XP: <strong id="current-xp" class="text-slate-200">0</strong></span>
+        <span>Next Level: <strong id="next-level-xp" class="text-slate-200">100</strong> XP</span>
+      </div>
+    </header>
+
+    <nav class="grid grid-cols-4 gap-1 bg-slate-800 p-1.5 rounded-xl mb-5 border border-slate-700 text-xs font-bold">
+      <button onclick="switchTab('tue')" id="tab-tue" class="py-2 rounded-lg transition-all text-center">Hike</button>
+      <button onclick="switchTab('wed')" id="tab-wed" class="py-2 rounded-lg transition-all text-center">Push</button>
+      <button onclick="switchTab('fri')" id="tab-fri" class="py-2 rounded-lg transition-all text-center">Legs</button>
+      <button onclick="switchTab('sun')" id="tab-sun" class="py-2 rounded-lg transition-all text-center">Pull</button>
+    </nav>
+
+    <section class="flex items-center justify-between mb-3 px-1">
+      <div>
+        <h2 id="quest-title" class="text-lg font-bold text-white">Workout</h2>
+        <p id="quest-desc" class="text-xs text-slate-400">Joint-safe & spine-spared routines</p>
+      </div>
+      <button onclick="resetDayChecklist()" class="text-xs text-slate-400 hover:text-rose-400 underline transition">
+        Reset Day
+      </button>
+    </section>
+
+    <section id="checklist-container" class="space-y-3 mb-6"></section>
+
+    <button id="complete-btn" onclick="completeWorkout()" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold rounded-xl shadow-lg transition duration-150 flex items-center justify-center gap-2">
+      <span>Complete Quest (+50 Bonus XP)</span>
+    </button>
+
+  </main>
+
+  <script>
+    // --- WORKOUT DATA ---
+    const workouts = {
+      tue: {
+        title: "Nature Trail Cardio",
+        desc: "Low-impact zone 2 walking; flat dirt terrain.",
+        xpPerTask: 20,
+        bonusXp: 50,
+        tasks: [
+          { name: "5-Min Nerve Floss & Mobility Warm-Up", cue: "Glides sciatic nerve at S1-L5 without spine strain" },
+          { name: "Nature Trail Hike (45-60 min)", cue: "Short strides, soft dirt path, glute push-off" },
+          { name: "Post-Hike Calf & Quad Gentle Cool-Down", cue: "Avoid sharp lumbar flexion" }
+        ]
+      },
+      wed: {
+        title: "Push & Core Stability",
+        desc: "Chest support to eliminate lumbar shear force.",
+        xpPerTask: 15,
+        bonusXp: 50,
+        tasks: [
+          { name: "Warm-Up: Cat-Cow, Nerve Floss, Bird-Dogs", cue: "Mid-back focus, neutral spine brace" },
+          { name: "Seated Chest Press Machine (3 × 10-12)", cue: "Back fully flat against backrest" },
+          { name: "30° Incline Dumbbell Bench Press (3 × 10-12)", cue: "Keep ribcage pinned, no lower-back arch" },
+          { name: "Seated DB Lateral Raises (3 × 12-15)", cue: "Seated removes spine sway entirely" },
+          { name: "Cable Rope Triceps Pushdowns (3 × 12-15)", cue: "Smooth elbow flexion, gentle on tendons" },
+          { name: "Dead Bugs or Bird-Dogs (3 × 8/side)", cue: "Anti-extension core brace" }
+        ]
+      },
+      fri: {
+        title: "Spine-Spared Lower Body",
+        desc: "Build legs & glutes with zero spinal loading.",
+        xpPerTask: 15,
+        bonusXp: 50,
+        tasks: [
+          { name: "Warm-Up: Nerve Floss & Glute Bridges", cue: "Activate gluteus medius/maximus" },
+          { name: "Leg Press - High & Wide Feet (3 × 10-12)", cue: "Keep pelvis down; do not round tailbone" },
+          { name: "Seated or Lying Hamstring Curls (3 × 12-15)", cue: "Stabilizes knee and posterior pelvic tilt" },
+          { name: "Dumbbell Romanian Deadlifts (3 × 8-10)", cue: "Pure hip hinge; lower DBs to shin only" },
+          { name: "Cable / Band Glute Kickbacks (3 × 12-15/leg)", cue: "Squeeze top; no lower back hyperextension" },
+          { name: "Banded Walks / Clamshells (2 × 15/side)", cue: "Strengthens SI joint stabilizers" }
+        ]
+      },
+      sun: {
+        title: "Pull & Posterior Chain",
+        desc: "Upper back strength, posture, and grip.",
+        xpPerTask: 15,
+        bonusXp: 50,
+        tasks: [
+          { name: "Warm-Up: Cat-Cow & Torso Rotations", cue: "Gentle mid-spine lubrication" },
+          { name: "Chest-Supported Row (3 × 10-12)", cue: "Pad supports torso completely" },
+          { name: "Lat Pulldowns - Neutral/Wide Grip (3 × 10-12)", cue: "Pull down to collarbone; stay upright" },
+          { name: "Cable Face Pulls (3 × 15)", cue: "Eye-level cable; targets rotator cuff" },
+          { name: "Seated Incline Dumbbell Curls (3 × 12)", cue: "Spine fully rested against pad" },
+          { name: "Farmer's Walks (3 × 35 paces)", cue: "Tall posture, strong abdominal brace" }
+        ]
+      }
+    };
+
+    // --- STATE MANAGEMENT ---
+    let currentTab = 'wed';
+    let state = JSON.parse(localStorage.getItem('jointSafeQuestState')) || {
+      xp: 0,
+      level: 1,
+      streak: 0,
+      lastCompletedDate: null,
+      checks: {}
+    };
+
+    function saveState() {
+      localStorage.setItem('jointSafeQuestState', JSON.stringify(state));
+      renderHeader();
+    }
+
+    // --- UI RENDERING ---
+    function switchTab(dayKey) {
+      currentTab = dayKey;
+      ['tue', 'wed', 'fri', 'sun'].forEach(d => {
+        const tabBtn = document.getElementById(`tab-${d}`);
+        if (d === dayKey) {
+          tabBtn.className = "py-2 rounded-lg bg-emerald-600 text-white font-bold shadow";
+        } else {
+          tabBtn.className = "py-2 rounded-lg text-slate-400 hover:text-slate-200 font-semibold";
+        }
+      });
+
+      const workout = workouts[dayKey];
+      document.getElementById('quest-title').innerText = workout.title;
+      document.getElementById('quest-desc').innerText = workout.desc;
+
+      renderChecklist();
+    }
+
+    function renderChecklist() {
+      const container = document.getElementById('checklist-container');
+      container.innerHTML = '';
+      const workout = workouts[currentTab];
+
+      workout.tasks.forEach((task, index) => {
+        const taskId = `${currentTab}_task_${index}`;
+        const isChecked = !!state.checks[taskId];
+
+        const card = document.createElement('div');
+        card.className = `flex items-start gap-3 p-3.5 rounded-xl border transition-all ${
+          isChecked ? 'bg-slate-800/40 border-emerald-500/30' : 'bg-slate-800 border-slate-700'
+        }`;
+
+        card.innerHTML = `
+          <input type="checkbox" id="${taskId}" ${isChecked ? 'checked' : ''} 
+            onchange="toggleTask('${taskId}', ${workout.xpPerTask})"
+            class="custom-checkbox mt-1 w-5 h-5 rounded border-slate-600 bg-slate-700 text-emerald-500 focus:ring-0 cursor-pointer" />
+          <label for="${taskId}" class="flex-1 cursor-pointer">
+            <div class="font-medium text-sm text-slate-100 ${isChecked ? 'line-through text-slate-400' : ''}">
+              ${task.name}
+            </div>
+            <div class="text-xs text-slate-400 mt-0.5">${task.cue}</div>
+          </label>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderHeader() {
+      const xpForNextLevel = state.level * 100;
+      const currentLevelBaseXP = (state.level - 1) * 100;
+      const progressXP = state.xp - currentLevelBaseXP;
+      const percent = Math.min(Math.max((progressXP / 100) * 100, 0), 100);
+
+      document.getElementById('level-display').innerText = state.level;
+      document.getElementById('streak-display').innerText = state.streak;
+      document.getElementById('current-xp').innerText = state.xp;
+      document.getElementById('next-level-xp').innerText = xpForNextLevel;
+      document.getElementById('xp-bar').style.width = `${percent}%`;
+    }
+
+    // --- GAMEPLAY MECHANICS ---
+    function toggleTask(taskId, xpVal) {
+      const isChecked = document.getElementById(taskId).checked;
+      if (isChecked) {
+        state.checks[taskId] = true;
+        addXP(xpVal);
+      } else {
+        delete state.checks[taskId];
+        addXP(-xpVal);
+      }
+      saveState();
+      renderChecklist();
+    }
+
+    function addXP(amount) {
+      state.xp = Math.max(0, state.xp + amount);
+      const calculatedLevel = Math.floor(state.xp / 100) + 1;
+      if (calculatedLevel > state.level) {
+        alert(`🎉 LEVEL UP! You reached Level ${calculatedLevel}! Joint resilience +10!`);
+      }
+      state.level = calculatedLevel;
+    }
+
+    function completeWorkout() {
+      const workout = workouts[currentTab];
+      const allChecked = workout.tasks.every((_, idx) => state.checks[`${currentTab}_task_${idx}`]);
+
+      if (!allChecked) {
+        alert("Please check off all exercises in this quest before finishing!");
+        return;
+      }
+
+      // Check date for streak tracking
+      const today = new Date().toDateString();
+      if (state.lastCompletedDate !== today) {
+        state.streak += 1;
+        state.lastCompletedDate = today;
+      }
+
+      addXP(workout.bonusXp);
+      saveState();
+      alert(`⚔️ Quest Completed! +${workout.bonusXp} Bonus XP awarded. Awesome job staying spine-safe!`);
+    }
+
+    function resetDayChecklist() {
+      if (confirm(`Reset checklist for this workout tab?`)) {
+        workouts[currentTab].tasks.forEach((_, idx) => {
+          delete state.checks[`${currentTab}_task_${idx}`];
+        });
+        saveState();
+        renderChecklist();
+      }
+    }
+
+    // Initialize
+    switchTab('wed');
+    renderHeader();
+  </script>
+</body>
+</html>
